@@ -173,3 +173,10 @@ export interface SystemLog {
   message: string;
   source: string;
 }
+
+export interface WalletState {
+  isConnected: boolean;
+  address: string | null;
+  balanceEth: number;
+  provider: string | null; // 'Metamask' | 'WalletConnect' etc
+}

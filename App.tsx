@@ -10,6 +10,7 @@ import { AdminPanel } from './pages/AdminPanel';
 import { LoginPage } from './pages/LoginPage';
 import { Leaderboard } from './pages/Leaderboard';
 import { PricingPage } from './pages/PricingPage';
+import { ComparisonPage } from './pages/Comparison';
 
 const App: React.FC = () => {
   return (
@@ -48,6 +49,7 @@ const App: React.FC = () => {
               <Route path="/coin/:id" element={<CoinDetail />} />
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/community" element={<Leaderboard />} />
+              <Route path="/compare" element={<ComparisonPage />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/pricing" element={<PricingPage />} />
             </Routes>
