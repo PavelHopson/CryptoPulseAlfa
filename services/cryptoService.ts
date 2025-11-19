@@ -1,4 +1,4 @@
-import { CoinData, AssetCategory, Timeframe, ChartPoint } from '../types';
+import { CoinData, AssetCategory, Timeframe, CandleData } from '../types';
 import { getSystemConfig } from './adminService';
 
 const API_URL = 'https://api.coingecko.com/api/v3';
@@ -15,7 +15,6 @@ const generateSparkline = (basePrice: number, volatility: number = 0.02) => {
 };
 
 // Helper to simulate live price updates (Jitter)
-// NOW READS FROM ADMIN CONFIG
 const applyLiveJitter = (coins: CoinData[]): CoinData[] => {
   const config = getSystemConfig();
   const volMultiplier = config.marketVolatility; // 1.0 is default
@@ -42,75 +41,83 @@ const applyLiveJitter = (coins: CoinData[]): CoinData[] => {
   });
 };
 
-// --- MOCK HISTORY GENERATOR FOR TIMEFRAMES ---
-export const fetchCoinHistory = async (coinId: string, timeframe: Timeframe, currentPrice: number): Promise<ChartPoint[]> => {
+// --- OHLC GENERATOR FOR TRADINGVIEW CHARTS ---
+export const fetchCoinHistory = async (coinId: string, timeframe: Timeframe, currentPrice: number): Promise<CandleData[]> => {
   // Simulate API delay
   await new Promise(r => setTimeout(r, 400));
 
-  const points: ChartPoint[] = [];
-  const now = Date.now();
+  const candles: CandleData[] = [];
+  const now = Math.floor(Date.now() / 1000); // unix timestamp in seconds
   let pointsCount = 100;
-  let interval = 0;
+  let interval = 0; // seconds
   let volatility = 0.01;
 
   switch (timeframe) {
     case '1H':
-      pointsCount = 60;
-      interval = 60 * 1000; // 1 minute
-      volatility = 0.002;
+      pointsCount = 100;
+      interval = 60; // 1 minute candles for 1H view
+      volatility = 0.001;
       break;
     case '1D':
-      pointsCount = 96; // every 15 min
-      interval = 15 * 60 * 1000;
-      volatility = 0.01;
+      pointsCount = 96; // 15 min candles
+      interval = 15 * 60;
+      volatility = 0.005;
       break;
     case '1W':
-      pointsCount = 84; // every 2 hours
-      interval = 2 * 60 * 60 * 1000;
-      volatility = 0.03;
+      pointsCount = 84; // 2 hour candles
+      interval = 2 * 60 * 60;
+      volatility = 0.015;
       break;
     case '1M':
-      pointsCount = 30; // daily
-      interval = 24 * 60 * 60 * 1000;
-      volatility = 0.08;
+      pointsCount = 120; // 6 hour candles
+      interval = 6 * 60 * 60;
+      volatility = 0.04;
       break;
     case '1Y':
-      pointsCount = 52; // weekly
-      interval = 7 * 24 * 60 * 60 * 1000;
-      volatility = 0.25;
+      pointsCount = 365; // daily candles
+      interval = 24 * 60 * 60;
+      volatility = 0.15;
       break;
   }
 
   // Generate backwards from current price
-  let lastPrice = currentPrice;
+  let lastClose = currentPrice;
   
   for (let i = 0; i < pointsCount; i++) {
     const time = now - (i * interval);
     
-    // Format time based on timeframe
-    let timeStr = '';
-    const dateObj = new Date(time);
+    // Create a candle based on the "Close" of the previous (forward in time) candle
+    // Since we are going backwards:
+    // The "Close" of this candle is 'lastClose'
+    // We generate an "Open" by applying random walk
     
-    if (timeframe === '1H' || timeframe === '1D') {
-      timeStr = dateObj.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    } else if (timeframe === '1W' || timeframe === '1M') {
-      timeStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-    } else {
-      timeStr = dateObj.toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' });
+    const changePercent = (Math.random() - 0.5) * volatility;
+    const open = lastClose / (1 + changePercent);
+    
+    // High and Low
+    const high = Math.max(open, lastClose) * (1 + Math.random() * (volatility * 0.5));
+    const low = Math.min(open, lastClose) * (1 - Math.random() * (volatility * 0.5));
+
+    // Format time: YYYY-MM-DD for Daily+, Unix for intraday
+    let timeVal: any = time;
+    if (timeframe === '1Y') {
+        const d = new Date(time * 1000);
+        timeVal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
-    points.unshift({
-      originalTime: time,
-      time: timeStr,
-      price: lastPrice
+    candles.unshift({
+      originalTime: time * 1000,
+      time: timeVal,
+      open,
+      high,
+      low,
+      close: lastClose
     });
 
-    // Random walk for previous price
-    const change = 1 + (Math.random() - 0.5) * volatility;
-    lastPrice = lastPrice / change;
+    lastClose = open; // Next backward candle closes where this one opened
   }
 
-  return points;
+  return candles;
 };
 
 

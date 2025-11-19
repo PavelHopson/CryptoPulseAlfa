@@ -1,8 +1,8 @@
-
-import { UserProfile, Position, CoinData, Transaction, AssetAllocation, PerformancePoint } from '../types';
+import { UserProfile, Position, CoinData, Transaction, AssetAllocation, PerformancePoint, UserActivity } from '../types';
 
 const STORAGE_KEY_USERS = 'cryptopulse_users_v2';
 const STORAGE_KEY_SESSION = 'cryptopulse_session_id';
+const STORAGE_KEY_ACTIVITY = 'cryptopulse_user_activity';
 const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1'];
 
 const INITIAL_STATE: UserProfile = {
@@ -10,7 +10,8 @@ const INITIAL_STATE: UserProfile = {
   name: "Трейдер (Демо)",
   email: "demo@cryptopulse.ai",
   password: "demo",
-  balance: 100000, // $100k Demo Account
+  avatar: '',
+  balance: 100000,
   equity: 100000,
   positions: [],
   transactions: [],
@@ -25,67 +26,170 @@ const INITIAL_STATE: UserProfile = {
       priceAlerts: false
     },
     twoFactorEnabled: false
-  }
+  },
+  achievements: [],
+  level: 1,
+  xp: 0
 };
 
-// Helper to get all users
-const getAllUsers = (): UserProfile[] => {
-  const stored = localStorage.getItem(STORAGE_KEY_USERS);
-  return stored ? JSON.parse(stored) : [INITIAL_STATE];
+const PAVEL_USER: UserProfile = {
+  id: 'pavel-hopson-id',
+  name: "PavelHopson",
+  email: "garaa11@mail.ru",
+  password: "Zeref1997",
+  avatar: 'https://cdn-icons-png.flaticon.com/512/12114/12114233.png', // Default Crypto Avatar
+  balance: 500000, // VIP Balance
+  equity: 500000,
+  positions: [],
+  transactions: [],
+  is_pro: true,
+  member_since: new Date().toISOString(),
+  preferences: {
+    currency: 'USD',
+    language: 'RU',
+    notifications: {
+      email: true,
+      push: true,
+      priceAlerts: true
+    },
+    twoFactorEnabled: false
+  },
+  achievements: [],
+  level: 10, // Bonus Level
+  xp: 5000
 };
 
-// Helper to save all users
+// --- Helpers Defined Before Use ---
+
 const saveAllUsers = (users: UserProfile[]) => {
   localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
 };
+
+const getAllUsers = (): UserProfile[] => {
+  const stored = localStorage.getItem(STORAGE_KEY_USERS);
+  let users: UserProfile[] = stored ? JSON.parse(stored) : [];
+
+  let needsSave = false;
+
+  // Ensure Demo User exists
+  if (!users.find(u => u.id === 'demo-user')) {
+    const demoUser = JSON.parse(JSON.stringify(INITIAL_STATE));
+    users.push(demoUser);
+    needsSave = true;
+  }
+
+  // Ensure Pavel exists and is synced
+  const pavelIndex = users.findIndex(u => u.email === PAVEL_USER.email);
+  if (pavelIndex === -1) {
+    users.push(PAVEL_USER);
+    needsSave = true;
+  } else {
+    // Sync static data if changed in code
+    const existingPavel = users[pavelIndex];
+    if (existingPavel.avatar !== PAVEL_USER.avatar) {
+         users[pavelIndex] = { ...existingPavel, avatar: PAVEL_USER.avatar };
+         needsSave = true;
+    }
+  }
+
+  if (needsSave) {
+    saveAllUsers(users);
+  }
+
+  return users;
+};
+
+export const logUserActivity = (userId: string, type: UserActivity['type'], details: string) => {
+  const storedLogs = localStorage.getItem(STORAGE_KEY_ACTIVITY);
+  const logs: UserActivity[] = storedLogs ? JSON.parse(storedLogs) : [];
+  
+  const newLog: UserActivity = {
+    id: Math.random().toString(36).substr(2, 9),
+    userId,
+    type,
+    details,
+    timestamp: new Date().toISOString(),
+    ip: '192.168.1.' + Math.floor(Math.random() * 255)
+  };
+
+  // Keep last 500 logs total
+  const updatedLogs = [newLog, ...logs].slice(0, 500);
+  localStorage.setItem(STORAGE_KEY_ACTIVITY, JSON.stringify(updatedLogs));
+};
+
+// --- Public API ---
 
 export const getUserProfile = (): UserProfile => {
   const users = getAllUsers();
   const sessionId = localStorage.getItem(STORAGE_KEY_SESSION);
   
   if (!sessionId) {
-     // Default to demo user if no session, or ensure demo exists
+     // No session, try to default to demo
      const demo = users.find(u => u.id === 'demo-user');
-     if (demo) return demo;
-     // Re-init demo if lost
-     saveAllUsers([INITIAL_STATE]);
-     return INITIAL_STATE;
+     if (demo) {
+       localStorage.setItem(STORAGE_KEY_SESSION, 'demo-user');
+       return demo;
+     }
+     return users[0];
   }
 
   const user = users.find(u => u.id === sessionId);
-  return user || INITIAL_STATE;
+  
+  if (!user) {
+      // Session ID invalid (user deleted?), fallback to demo
+      const demo = users.find(u => u.id === 'demo-user');
+      if (demo) {
+        localStorage.setItem(STORAGE_KEY_SESSION, 'demo-user');
+        return demo;
+      }
+      return users[0];
+  }
+  
+  return user;
 };
 
 export const registerUser = (name: string, email: string, password: string): { success: boolean, message: string } => {
   const users = getAllUsers();
-  if (users.find(u => u.email === email)) {
+  const normalizedEmail = email.trim().toLowerCase();
+  
+  if (users.find(u => u.email.toLowerCase() === normalizedEmail)) {
     return { success: false, message: 'Пользователь с таким email уже существует' };
   }
 
   const newUser: UserProfile = {
-    ...INITIAL_STATE,
+    ...JSON.parse(JSON.stringify(INITIAL_STATE)),
     id: Math.random().toString(36).substr(2, 9),
-    name,
-    email,
-    password, // In a real app, hash this!
+    name: name.trim(),
+    email: normalizedEmail,
+    password,
+    avatar: '',
     member_since: new Date().toISOString(),
-    balance: 10000, // Start bonus
+    balance: 10000, // Bonus
     equity: 10000,
-    transactions: []
+    transactions: [],
+    positions: [],
+    achievements: [],
+    level: 1,
+    xp: 0
   };
 
   users.push(newUser);
   saveAllUsers(users);
   localStorage.setItem(STORAGE_KEY_SESSION, newUser.id!);
+  logUserActivity(newUser.id!, 'LOGIN', 'New user registration');
   return { success: true, message: 'Регистрация успешна' };
 };
 
 export const loginUser = (email: string, password: string): { success: boolean, message: string } => {
   const users = getAllUsers();
-  const user = users.find(u => u.email === email && u.password === password);
+  const normalizedEmail = email.trim().toLowerCase();
+  
+  // Strict check
+  const user = users.find(u => u.email.toLowerCase() === normalizedEmail && u.password === password);
   
   if (user && user.id) {
     localStorage.setItem(STORAGE_KEY_SESSION, user.id);
+    logUserActivity(user.id, 'LOGIN', 'Login via email');
     return { success: true, message: 'Вход выполнен успешно' };
   }
   return { success: false, message: 'Неверный email или пароль' };
@@ -100,11 +204,15 @@ export const updateUserProfile = (updates: Partial<UserProfile>): UserProfile =>
   const current = getUserProfile();
   if (!current.id) return current;
 
-  const updated = { ...current, ...updates };
+  const users = getAllUsers();
+  const index = users.findIndex(u => u.id === current.id);
   
-  // Deep merge preferences
+  if (index === -1) return current;
+
+  // Perform deep merge for preferences
+  const updatedUser = { ...current, ...updates };
   if (updates.preferences) {
-    updated.preferences = {
+    updatedUser.preferences = {
       ...current.preferences,
       ...updates.preferences,
       notifications: {
@@ -114,15 +222,15 @@ export const updateUserProfile = (updates: Partial<UserProfile>): UserProfile =>
     };
   }
 
-  // Save to list
-  const users = getAllUsers();
-  const index = users.findIndex(u => u.id === current.id);
-  if (index !== -1) {
-    users[index] = updated;
-    saveAllUsers(users);
-  }
+  users[index] = updatedUser;
+  saveAllUsers(users);
+  
+  // Logging
+  if (updates.avatar) logUserActivity(current.id, 'PROFILE_UPDATE', 'Avatar changed');
+  else if (updates.name || updates.email) logUserActivity(current.id, 'PROFILE_UPDATE', 'Profile details updated');
+  else if (updates.preferences) logUserActivity(current.id, 'PROFILE_UPDATE', 'Preferences updated');
 
-  return updated;
+  return updatedUser;
 };
 
 export const resetAccount = (): UserProfile => {
@@ -134,7 +242,10 @@ export const resetAccount = (): UserProfile => {
     balance: 100000,
     equity: 100000,
     positions: [],
-    transactions: []
+    transactions: [],
+    achievements: [],
+    level: 1,
+    xp: 0
   };
   
   const users = getAllUsers();
@@ -142,6 +253,7 @@ export const resetAccount = (): UserProfile => {
   if (index !== -1) {
     users[index] = resetUser;
     saveAllUsers(users);
+    logUserActivity(current.id, 'SECURITY_UPDATE', 'Account reset performed');
   }
 
   return resetUser;
@@ -149,6 +261,7 @@ export const resetAccount = (): UserProfile => {
 
 export const depositFunds = (amount: number, currency: 'USD' | 'EUR' | 'RUB', method: string) => {
   const profile = getUserProfile();
+  if (!profile.id) return profile;
   
   let usdAmount = amount;
   if (currency === 'RUB') usdAmount = amount / 92.5;
@@ -170,6 +283,7 @@ export const depositFunds = (amount: number, currency: 'USD' | 'EUR' | 'RUB', me
   };
 
   updateUserProfile(updated);
+  logUserActivity(profile.id, 'BALANCE_ADJUSTMENT', `Deposit: +$${usdAmount.toFixed(2)} via ${method}`);
   return updated;
 };
 
@@ -260,21 +374,18 @@ export const getAssetAllocation = (user: UserProfile, currentPrices: Record<stri
   const totalEquity = calculateEquity(user, currentPrices);
   const allocation: AssetAllocation[] = [];
 
-  // 1. Cash (USD)
   if (user.balance > 0) {
     allocation.push({
       name: 'US Dollar',
       symbol: 'USD',
       value: user.balance,
-      percentage: 0, // calc later
-      color: '#10b981' // Emerald
+      percentage: 0, 
+      color: '#10b981'
     });
   }
 
-  // 2. Positions
   user.positions.forEach((pos, index) => {
     const price = currentPrices[pos.assetId] || pos.entryPrice;
-    
     let pnl = 0;
     if (pos.type === 'LONG') {
       pnl = (price - pos.entryPrice) * pos.amount;
@@ -282,7 +393,6 @@ export const getAssetAllocation = (user: UserProfile, currentPrices: Record<stri
       pnl = (pos.entryPrice - price) * pos.amount;
     }
     const margin = (pos.entryPrice * pos.amount) / pos.leverage;
-    // Equity Value of the position for allocation chart
     const posValue = Math.max(0, margin + pnl); 
 
     if (posValue > 0) {
@@ -296,7 +406,6 @@ export const getAssetAllocation = (user: UserProfile, currentPrices: Record<stri
     }
   });
 
-  // Calculate percentages
   return allocation.map(item => ({
     ...item,
     percentage: (item.value / totalEquity) * 100
@@ -304,21 +413,17 @@ export const getAssetAllocation = (user: UserProfile, currentPrices: Record<stri
 };
 
 export const getPerformanceHistory = (user: UserProfile): PerformancePoint[] => {
-  // Simulate a history graph based on "Member Since"
   const points: PerformancePoint[] = [];
   const days = 30;
   const now = Date.now();
   let currentValue = user.equity; 
   
-  // Generate backwards from current equity
   for (let i = 0; i < days; i++) {
     points.push({
       date: new Date(now - i * 24 * 60 * 60 * 1000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
       value: currentValue
     });
     
-    // Reverse random walk logic to create history
-    // If market was "volatile", change is bigger
     const change = 1 + (Math.random() - 0.5) * 0.05;
     currentValue = currentValue / change;
   }

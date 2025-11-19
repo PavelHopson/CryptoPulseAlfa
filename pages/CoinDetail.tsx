@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { fetchCoinDetails, fetchCoinHistory } from '../services/cryptoService';
-import { CoinData, AssetCategory, ChartPoint, Timeframe } from '../types';
-import { ChartComponent } from '../components/ChartComponent';
+import { CoinData, AssetCategory, CandleData, Timeframe } from '../types';
+import { TradingViewChart } from '../components/TradingViewChart';
 import { AIInsight } from '../components/AIInsight';
 import { TradeModal } from '../components/TradeModal';
 import { TechAnalysisModal } from '../components/TechAnalysisModal';
@@ -15,7 +14,7 @@ export const CoinDetail: React.FC = () => {
   const category = (searchParams.get('cat') as AssetCategory) || 'crypto';
   
   const [coin, setCoin] = useState<CoinData | null>(null);
-  const [chartData, setChartData] = useState<ChartPoint[]>([]);
+  const [chartData, setChartData] = useState<CandleData[]>([]);
   const [timeframe, setTimeframe] = useState<Timeframe>('1D');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,18 +37,31 @@ export const CoinDetail: React.FC = () => {
       
       if (apiError) setError(apiError);
       
-      // 2. Fetch history based on timeframe (only on initial or explicit timeframe change)
+      // 2. Fetch history (Candles) - Only if not silent (initial load) or missing data
       if (data && (!silent || chartData.length === 0)) {
         const history = await fetchCoinHistory(id, timeframe, data.current_price);
         setChartData(history);
+      } else if (data && silent && chartData.length > 0) {
+        // 3. Live Update: Update the last candle with the new price
+        const lastCandle = chartData[chartData.length - 1];
+        const updatedCandle = {
+            ...lastCandle,
+            close: data.current_price,
+            high: Math.max(lastCandle.high, data.current_price),
+            low: Math.min(lastCandle.low, data.current_price)
+        };
+        // Update state with new array to trigger chart update
+        const newChartData = [...chartData.slice(0, -1), updatedCandle];
+        setChartData(newChartData);
       }
 
       setLoading(false);
     }
   };
 
-  // Initial Load
+  // Initial Load & Timeframe Change
   useEffect(() => {
+    setChartData([]); // Reset chart on timeframe change
     loadData();
   }, [id, category, timeframe]);
 
@@ -57,9 +69,9 @@ export const CoinDetail: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       loadData(true); // Silent update
-    }, 5000);
+    }, 2000); // Faster polling for live feel
     return () => clearInterval(interval);
-  }, [id, category, timeframe]);
+  }, [id, category, timeframe, chartData]); // Depend on chartData to correctly update last candle
 
   const openTrade = (type: 'LONG' | 'SHORT') => {
     setTradeType(type);
@@ -194,7 +206,7 @@ export const CoinDetail: React.FC = () => {
            <div className="bg-dark-card border border-gray-800 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold flex items-center gap-2">
-                   <Activity className="w-5 h-5 text-brand-500" /> Динамика Цены
+                   <Activity className="w-5 h-5 text-brand-500" /> Профессиональный График
                 </h2>
                 <div className="flex bg-gray-900 rounded-lg p-1">
                    {(['1H', '1D', '1W', '1M', '1Y'] as Timeframe[]).map(t => (
@@ -208,7 +220,8 @@ export const CoinDetail: React.FC = () => {
                    ))}
                 </div>
               </div>
-              <ChartComponent data={chartData} height={400} isPositive={isPositive} />
+              {/* Use New TradingView Chart */}
+              <TradingViewChart data={chartData} height={400} isPositive={isPositive} />
            </div>
 
            {/* Gemini AI Analysis */}
@@ -261,10 +274,9 @@ export const CoinDetail: React.FC = () => {
                  
                  <button 
                    onClick={() => setTechModalOpen(true)}
-                   className="w-full bg-gray-800/50 hover:bg-gray-800 border border-gray-700 rounded-lg p-3 transition-colors flex items-center justify-between group"
+                   className="w-full bg-gray-800/50 hover:bg-gray-800 border border-gray-700 rounded-lg p-3 transition-colors flex items-center justify-center gap-2 group text-brand-400 font-bold"
                  >
-                    <span className="flex items-center gap-3 text-gray-300"><Activity className="w-4 h-4" /> Технический анализ</span>
-                    <ArrowLeft className="w-4 h-4 rotate-180 text-gray-600 group-hover:text-white transition-colors" />
+                    <Activity className="w-4 h-4" /> Технический анализ
                  </button>
               </div>
            </div>

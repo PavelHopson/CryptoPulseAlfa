@@ -1,12 +1,15 @@
-import { SystemConfig, UserProfile, SystemLog } from '../types';
-import { getUserProfile } from './userService';
+
+import { SystemConfig, UserProfile, SystemLog, UserActivity } from '../types';
+import { getUserProfile, logUserActivity } from './userService';
 
 const CONFIG_KEY = 'cryptopulse_sys_config';
 const LOGS_KEY = 'cryptopulse_sys_logs';
+const USERS_KEY = 'cryptopulse_users_v2';
+const ACTIVITY_KEY = 'cryptopulse_user_activity';
 
 const DEFAULT_CONFIG: SystemConfig = {
   maintenanceMode: false,
-  marketVolatility: 1.0, // Normal
+  marketVolatility: 1.0,
   marketBias: 'NEUTRAL',
   allowRegistrations: true,
   globalAlert: null
@@ -23,7 +26,7 @@ const MOCK_PREFERENCES = {
   twoFactorEnabled: false
 };
 
-// Mock Users for the Table (since we don't have a real backend DB)
+// Updated MOCK_USERS to match UserProfile interface fully
 const MOCK_USERS: UserProfile[] = [
   { 
     name: "Alice Trader", 
@@ -34,7 +37,11 @@ const MOCK_USERS: UserProfile[] = [
     is_pro: true, 
     member_since: "2023-01-15", 
     status: 'ACTIVE',
-    preferences: MOCK_PREFERENCES
+    preferences: MOCK_PREFERENCES,
+    achievements: [],
+    level: 12,
+    xp: 5400,
+    avatar: ''
   },
   { 
     name: "Bob Hodler", 
@@ -45,7 +52,11 @@ const MOCK_USERS: UserProfile[] = [
     is_pro: false, 
     member_since: "2023-06-20", 
     status: 'SUSPENDED',
-    preferences: MOCK_PREFERENCES
+    preferences: MOCK_PREFERENCES,
+    achievements: [],
+    level: 2,
+    xp: 300,
+    avatar: ''
   },
   { 
     name: "Charlie Whale", 
@@ -56,29 +67,11 @@ const MOCK_USERS: UserProfile[] = [
     is_pro: true, 
     member_since: "2022-11-01", 
     status: 'ACTIVE',
-    preferences: MOCK_PREFERENCES
-  },
-  { 
-    name: "Dave Daytrader", 
-    email: "dave@day.io", 
-    balance: 500, 
-    equity: 0, 
-    positions: [], 
-    is_pro: false, 
-    member_since: "2024-02-10", 
-    status: 'BANNED',
-    preferences: MOCK_PREFERENCES
-  },
-  { 
-    name: "Eve Sniper", 
-    email: "eve@signals.net", 
-    balance: 89000, 
-    equity: 95000, 
-    positions: [], 
-    is_pro: true, 
-    member_since: "2023-09-05", 
-    status: 'ACTIVE',
-    preferences: MOCK_PREFERENCES
+    preferences: MOCK_PREFERENCES,
+    achievements: [],
+    level: 50,
+    xp: 100000,
+    avatar: ''
   },
 ];
 
@@ -96,20 +89,41 @@ export const updateSystemConfig = (updates: Partial<SystemConfig>) => {
 };
 
 export const getAllUsers = (): UserProfile[] => {
-  // Combine the real local user with mock users
-  const localUser = getUserProfile();
-  return [
-    { ...localUser, id: 'local-user-1', status: 'ACTIVE' }, 
-    ...MOCK_USERS.map((u, i) => ({ ...u, id: `mock-${i}` }))
-  ];
+  const stored = localStorage.getItem(USERS_KEY);
+  return stored ? JSON.parse(stored) : [];
+};
+
+export const adminSetUserBalance = (userId: string, newBalance: number) => {
+    const users: UserProfile[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+    const index = users.findIndex(u => u.id === userId);
+    
+    if (index !== -1) {
+        const oldBalance = users[index].balance;
+        users[index].balance = newBalance;
+        users[index].equity = newBalance;
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        
+        logUserActivity(userId, 'BALANCE_ADJUSTMENT', `Admin changed balance from $${oldBalance.toFixed(2)} to $${newBalance.toFixed(2)}`);
+        return true;
+    }
+    return false;
+};
+
+export const getUserActivityLogs = (userId: string): UserActivity[] => {
+    const logs: UserActivity[] = JSON.parse(localStorage.getItem(ACTIVITY_KEY) || '[]');
+    return logs.filter(l => l.userId === userId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 };
 
 export const updateUserStatus = (id: string, status: 'ACTIVE' | 'BANNED' | 'SUSPENDED') => {
-  // In a real app, this would API call. Here we just log it.
-  if (id === 'local-user-1') {
-    // potentially lock the local user out
+  const users: UserProfile[] = getAllUsers();
+  const index = users.findIndex(u => u.id === id);
+  if (index !== -1) {
+    users[index].status = status;
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    logSystemEvent('WARNING', `User ${id} status changed to ${status}`);
+    return true;
   }
-  logSystemEvent('WARNING', `User ${id} status changed to ${status}`);
+  return false;
 };
 
 export const logSystemEvent = (level: SystemLog['level'], message: string) => {
@@ -121,7 +135,6 @@ export const logSystemEvent = (level: SystemLog['level'], message: string) => {
     message,
     source: 'AdminPanel'
   };
-  // Keep last 50 logs
   const updatedLogs = [newLog, ...logs].slice(0, 50);
   localStorage.setItem(LOGS_KEY, JSON.stringify(updatedLogs));
 };
@@ -132,10 +145,12 @@ export const getSystemLogs = (): SystemLog[] => {
 };
 
 export const getSystemStats = () => {
+  const users = getAllUsers();
+  const active = users.filter(u => u.status === 'ACTIVE').length;
   return {
     totalVolume: 84239482100,
-    activeUsers: 14532,
-    serverLoad: 23, // %
-    dbLatency: 45, // ms
+    activeUsers: active,
+    serverLoad: 23,
+    dbLatency: 45,
   };
 };

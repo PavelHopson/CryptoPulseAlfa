@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
@@ -7,6 +8,7 @@ import { Favorites } from './pages/Favorites';
 import { Profile } from './pages/Profile';
 import { AdminPanel } from './pages/AdminPanel';
 import { LoginPage } from './pages/LoginPage';
+import { Leaderboard } from './pages/Leaderboard';
 
 const App: React.FC = () => {
   return (
@@ -44,6 +46,7 @@ const App: React.FC = () => {
               
               <Route path="/coin/:id" element={<CoinDetail />} />
               <Route path="/favorites" element={<Favorites />} />
+              <Route path="/community" element={<Leaderboard />} />
               <Route path="/profile" element={<Profile />} />
             </Routes>
           </Layout>

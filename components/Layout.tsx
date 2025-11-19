@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { Activity, BarChart2, Search, Bell, User, Star, TrendingUp, DollarSign, Shield, LogIn, Check, X, Info, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Activity, BarChart2, Search, Bell, User, Star, TrendingUp, DollarSign, Shield, LogIn, Check, X, Info, CheckCircle, AlertTriangle, Trophy } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { getUserProfile } from '../services/userService';
 import { UserProfile } from '../types';
@@ -26,7 +25,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   useEffect(() => {
     updateProfile();
     window.addEventListener('balanceChanged', updateProfile);
-    return () => window.removeEventListener('balanceChanged', updateProfile);
+    window.addEventListener('userUpdated', updateProfile);
+    return () => {
+      window.removeEventListener('balanceChanged', updateProfile);
+      window.removeEventListener('userUpdated', updateProfile);
+    };
   }, []);
 
   useEffect(() => {
@@ -67,6 +70,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 <Link to="/" className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${isActive('/')}`}>Крипто</Link>
                 <Link to="/forex" className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${isActive('/forex')}`}>Форекс</Link>
                 <Link to="/futures" className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${isActive('/futures')}`}>Фьючерсы</Link>
+                <Link to="/community" className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${isActive('/community')}`}>Сообщество</Link>
                 <Link to="/favorites" className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${isActive('/favorites')}`}>Избранное</Link>
               </div>
             </div>
@@ -145,9 +149,24 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               
               {user && user.id !== 'demo-user' ? (
                 <Link to="/profile" className={`flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full transition-all ${isActive('/profile')}`}>
-                  <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-sm font-bold text-white ring-2 ring-dark-bg">
-                    {user.name.charAt(0)}
-                  </div>
+                  {user.avatar ? (
+                     <img 
+                       src={user.avatar} 
+                       alt={user.name} 
+                       className="w-8 h-8 rounded-full object-cover ring-2 ring-dark-bg bg-gray-800"
+                       onError={(e) => {
+                           const target = e.target as HTMLImageElement;
+                           const fallback = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                           if (target.src !== fallback) {
+                               target.src = fallback;
+                           }
+                       }}
+                     />
+                  ) : (
+                     <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-sm font-bold text-white ring-2 ring-dark-bg">
+                        {user.name.charAt(0)}
+                     </div>
+                  )}
                   <div className="text-xs text-left hidden xl:block">
                      <div className="font-bold text-white">{user.name}</div>
                      <div className="text-emerald-400">${user.balance.toLocaleString(undefined, {maximumFractionDigits: 2})}</div>
@@ -180,8 +199,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 )}
             </button>
             {user && user.id !== 'demo-user' ? (
-                <Link to="/profile" className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
-                {user.name.charAt(0)}
+                <Link to="/profile" className="block">
+                  {user.avatar ? (
+                     <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                     <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                        {user.name.charAt(0)}
+                     </div>
+                  )}
                 </Link>
             ) : (
                 <Link to="/login" className="text-brand-500">
@@ -190,7 +215,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             )}
          </div>
 
-         {/* Mobile Notification Sheet (Simplified) */}
+         {/* Mobile Notification Sheet */}
          {isNotifOpen && (
              <div className="fixed inset-0 z-50 bg-dark-bg flex flex-col animate-fade-in">
                  <div className="flex justify-between items-center p-4 border-b border-gray-800">
@@ -230,20 +255,24 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
              <BarChart2 className="w-5 h-5" />
              <span className="text-[10px] font-medium">Крипто</span>
           </Link>
-          <Link to="/forex" className={`flex flex-col items-center gap-1 w-16 transition-all ${location.pathname === '/forex' ? 'text-brand-500' : 'text-gray-400'}`}>
-             <DollarSign className="w-5 h-5" />
-             <span className="text-[10px] font-medium">Форекс</span>
+          <Link to="/community" className={`flex flex-col items-center gap-1 w-16 transition-all ${location.pathname === '/community' ? 'text-brand-500' : 'text-gray-400'}`}>
+             <Trophy className="w-5 h-5" />
+             <span className="text-[10px] font-medium">Топ</span>
           </Link>
           
            <Link to={user && user.id !== 'demo-user' ? "/profile" : "/login"} className="relative -top-5 group cursor-pointer">
-             <div className="w-12 h-12 bg-gradient-to-tr from-brand-600 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-brand-500/30 border-4 border-dark-bg">
-               <User className="w-5 h-5 text-white" />
+             <div className="w-12 h-12 bg-gradient-to-tr from-brand-600 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-brand-500/30 border-4 border-dark-bg overflow-hidden">
+               {user && user.avatar ? (
+                   <img src={user.avatar} alt="Me" className="w-full h-full object-cover" />
+               ) : (
+                   <User className="w-5 h-5 text-white" />
+               )}
              </div>
            </Link>
 
            <Link to="/futures" className={`flex flex-col items-center gap-1 w-16 transition-all ${location.pathname === '/futures' ? 'text-brand-500' : 'text-gray-400'}`}>
              <TrendingUp className="w-5 h-5" />
-             <span className="text-[10px] font-medium">Фьючерсы</span>
+             <span className="text-[10px] font-medium">Торги</span>
           </Link>
            <Link to="/favorites" className={`flex flex-col items-center gap-1 w-16 transition-all ${location.pathname === '/favorites' ? 'text-brand-500' : 'text-gray-400'}`}>
              <Star className="w-5 h-5" />

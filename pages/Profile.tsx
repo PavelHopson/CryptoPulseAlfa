@@ -1,12 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { User, Settings, CreditCard, History, TrendingUp, ArrowUpRight, Shield, LogOut, Award, XCircle } from 'lucide-react';
+import { User, Settings, CreditCard, History, TrendingUp, ArrowUpRight, Shield, LogOut, Award, XCircle, Star } from 'lucide-react';
 import { getUserProfile, closePosition, calculateEquity, getAssetAllocation, getPerformanceHistory, logoutUser } from '../services/userService';
 import { UserProfile, AssetAllocation, PerformancePoint } from '../types';
 import { fetchTopCoins } from '../services/cryptoService';
 import { DepositModal } from '../components/DepositModal';
 import { SettingsModal } from '../components/SettingsModal';
 import { PortfolioAnalytics } from '../components/PortfolioAnalytics';
+import { getLevelProgress } from '../services/gamificationService';
 
 export const Profile: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -26,7 +27,7 @@ export const Profile: React.FC = () => {
     
     // Fetch fresh prices to calculate PnL
     const { data } = await fetchTopCoins(); // simplified fetch for demo
-    // Map data for quick lookup (In a real app we'd fetch exact IDs from positions)
+    // Map data for quick lookup
     const priceMap: Record<string, number> = {};
     data.forEach(c => priceMap[c.id] = c.current_price);
     
@@ -56,7 +57,6 @@ export const Profile: React.FC = () => {
   }, []);
 
   const handleClosePosition = (id: string) => {
-    // Find current price from our map, fallback to entry
     const pos = user?.positions.find(p => p.id === id);
     const price = pos ? (currentPrices[pos.assetId] || pos.entryPrice) : 0;
     
@@ -73,6 +73,7 @@ export const Profile: React.FC = () => {
   if (!user) return <div>Loading Profile...</div>;
 
   const marginUsed = user.positions.reduce((sum, p) => sum + ((p.entryPrice * p.amount) / p.leverage), 0);
+  const levelProgress = getLevelProgress(user);
 
   return (
     <div className="space-y-8 animate-fade-in pb-20">
@@ -91,10 +92,22 @@ export const Profile: React.FC = () => {
              <div className="flex items-center gap-3 mb-1">
                 <h1 className="text-2xl font-bold text-white">{user.name}</h1>
                 <span className="bg-gradient-to-r from-amber-400 to-orange-500 text-black text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                   <Award className="w-3 h-3" /> Pro Trader
+                   <Award className="w-3 h-3" /> Lvl {user.level || 1}
                 </span>
              </div>
              <p className="text-gray-400">{user.email} • Member since {new Date(user.member_since).getFullYear()}</p>
+             
+             {/* XP Bar */}
+             <div className="mt-3 max-w-xs">
+                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                   <span>XP Progress</span>
+                   <span>{Math.round(levelProgress)}%</span>
+                </div>
+                <div className="w-full bg-gray-900 h-1.5 rounded-full">
+                   <div className="bg-brand-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${levelProgress}%` }}></div>
+                </div>
+             </div>
+
            </div>
            <div className="flex gap-3 w-full md:w-auto">
              <button 
@@ -111,6 +124,22 @@ export const Profile: React.FC = () => {
              </button>
            </div>
         </div>
+      </div>
+
+      {/* Achievements Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+         {user.achievements?.map(ach => (
+            <div key={ach.id} className="bg-dark-card border border-gray-800 p-3 rounded-xl flex flex-col items-center text-center group hover:border-brand-500/50 transition-colors">
+               <div className="text-3xl mb-2 filter drop-shadow-md">{ach.icon}</div>
+               <div className="font-bold text-xs text-white">{ach.title}</div>
+               <div className="text-[10px] text-gray-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">{ach.description}</div>
+            </div>
+         ))}
+         {(!user.achievements || user.achievements.length === 0) && (
+             <div className="col-span-2 md:col-span-4 lg:col-span-6 bg-dark-card border border-gray-800 border-dashed p-4 rounded-xl text-center text-gray-500 text-sm">
+                 Нет достижений. Торгуйте, чтобы получить бейджи!
+             </div>
+         )}
       </div>
 
       {/* Account Stats Grid */}
@@ -221,7 +250,7 @@ export const Profile: React.FC = () => {
         {/* Quick Actions / Status */}
         <div className="space-y-6">
            
-           {/* Transaction History (New) */}
+           {/* Transaction History */}
            <div className="bg-dark-card border border-gray-800 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
                  <h3 className="font-bold text-white flex items-center gap-2">

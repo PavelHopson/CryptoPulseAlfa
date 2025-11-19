@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Shield, Users, Server, Settings, AlertTriangle, Lock, BarChart2, Play, Pause, Trash2, Edit3, Save, Activity, Terminal } from 'lucide-react';
 import { getAllUsers, getSystemConfig, getSystemStats, updateSystemConfig, getSystemLogs, updateUserStatus } from '../services/adminService';
@@ -11,7 +12,7 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pass === 'admin') {
+    if (pass === 'Zeref1997') {
       onLogin();
     } else {
       setErr(true);

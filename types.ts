@@ -36,7 +36,6 @@ export interface CoinData {
   sparkline_in_7d?: {
     price: number[];
   };
-  // Unified fields for non-crypto assets
   category?: AssetCategory;
 }
 
@@ -47,7 +46,7 @@ export interface Position {
   name: string;
   type: 'LONG' | 'SHORT';
   entryPrice: number;
-  amount: number; // Quantity of asset
+  amount: number;
   leverage: number;
   timestamp: number;
 }
@@ -85,50 +84,84 @@ export interface UserPreferences {
   twoFactorEnabled: boolean;
 }
 
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlockedAt?: string;
+}
+
+export interface UserActivity {
+  id: string;
+  userId: string;
+  type: 'LOGIN' | 'PROFILE_UPDATE' | 'BALANCE_ADJUSTMENT' | 'SECURITY_UPDATE';
+  details: string;
+  timestamp: string;
+  ip?: string;
+}
+
 export interface UserProfile {
   id?: string;
   name: string;
   email: string;
-  password?: string; // Only for mock auth
-  balance: number; // Available Cash
-  equity: number; // Cash + Unrealized PnL
+  password?: string;
+  avatar?: string;
+  balance: number;
+  equity: number;
   positions: Position[];
   transactions?: Transaction[];
   preferences: UserPreferences;
   is_pro: boolean;
   member_since: string;
   status?: 'ACTIVE' | 'BANNED' | 'SUSPENDED';
+  achievements: Achievement[];
+  level: number;
+  xp: number;
 }
 
 export interface ChartPoint {
   time: string;
   price: number;
-  originalTime: number; // Timestamp for sorting
+  originalTime: number;
 }
 
-export enum TimeRange {
-  H24 = '24h',
-  D7 = '7d',
-  D30 = '30d'
+export interface CandleData {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  originalTime: number;
 }
 
 export interface NewsArticle {
   id: string;
   title: string;
-  description: string; // Snippet
+  description: string;
   url: string;
   source: string;
   publishedAt: string;
   imageUrl?: string;
-  type: 'MARKET' | 'PROJECT'; // Market news or Site update
+  type: 'MARKET' | 'PROJECT';
 }
 
-// --- ADMIN TYPES ---
+export interface TraderProfile {
+  id: string;
+  rank: number;
+  name: string;
+  avatar: string;
+  profitPercent: number;
+  winRate: number;
+  followers: number;
+  isHot: boolean;
+  topAsset: string;
+}
 
 export interface SystemConfig {
   maintenanceMode: boolean;
-  marketVolatility: number; // 0.1 to 5.0 multiplier
-  marketBias: 'NEUTRAL' | 'BULLISH' | 'BEARISH'; // Influences random jitter
+  marketVolatility: number;
+  marketBias: 'NEUTRAL' | 'BULLISH' | 'BEARISH';
   allowRegistrations: boolean;
   globalAlert: string | null;
 }

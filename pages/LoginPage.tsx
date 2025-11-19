@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Activity, Lock, Mail, User, ArrowRight, AlertCircle } from 'lucide-react';
 import { loginUser, registerUser } from '../services/userService';
@@ -21,14 +22,14 @@ export const LoginPage: React.FC = () => {
     await new Promise(r => setTimeout(r, 1000));
 
     if (isLogin) {
-      const res = loginUser(email, password);
+      const res = loginUser(email.trim(), password);
       if (res.success) {
         navigate('/');
       } else {
         setError(res.message);
       }
     } else {
-      const res = registerUser(name, email, password);
+      const res = registerUser(name.trim(), email.trim(), password);
       if (res.success) {
         navigate('/');
       } else {
