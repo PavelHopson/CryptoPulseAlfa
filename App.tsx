@@ -9,6 +9,7 @@ import { Profile } from './pages/Profile';
 import { AdminPanel } from './pages/AdminPanel';
 import { LoginPage } from './pages/LoginPage';
 import { Leaderboard } from './pages/Leaderboard';
+import { PricingPage } from './pages/PricingPage';
 
 const App: React.FC = () => {
   return (
@@ -48,6 +49,7 @@ const App: React.FC = () => {
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/community" element={<Leaderboard />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/pricing" element={<PricingPage />} />
             </Routes>
           </Layout>
         } />

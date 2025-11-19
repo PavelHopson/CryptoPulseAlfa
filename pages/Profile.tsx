@@ -8,6 +8,7 @@ import { DepositModal } from '../components/DepositModal';
 import { SettingsModal } from '../components/SettingsModal';
 import { PortfolioAnalytics } from '../components/PortfolioAnalytics';
 import { getLevelProgress } from '../services/gamificationService';
+import { Link } from 'react-router-dom';
 
 export const Profile: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -94,6 +95,11 @@ export const Profile: React.FC = () => {
                 <span className="bg-gradient-to-r from-amber-400 to-orange-500 text-black text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                    <Award className="w-3 h-3" /> Lvl {user.level || 1}
                 </span>
+                {user.is_pro && (
+                  <span className="bg-brand-600 text-white text-xs font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow-lg shadow-brand-500/20">
+                    PRO
+                  </span>
+                )}
              </div>
              <p className="text-gray-400">{user.email} • Member since {new Date(user.member_since).getFullYear()}</p>
              
@@ -274,15 +280,26 @@ export const Profile: React.FC = () => {
               </div>
            </div>
 
-           <div className="bg-gradient-to-br from-purple-900/50 to-brand-900/50 border border-brand-500/30 rounded-2xl p-6">
-              <h3 className="font-bold text-white mb-2">Pro Analysis Plan</h3>
-              <p className="text-sm text-gray-300 mb-4">Your plan renews on Oct 24, 2025.</p>
-              <div className="w-full bg-black/30 h-2 rounded-full mb-4">
-                 <div className="bg-brand-500 h-2 rounded-full" style={{ width: '75%' }}></div>
-              </div>
-              <button className="w-full bg-white/10 hover:bg-white/20 text-white text-sm font-bold py-2 rounded-lg transition-colors">
-                 Manage Subscription
-              </button>
+           <div className={`bg-gradient-to-br ${user.is_pro ? 'from-purple-900/50 to-brand-900/50' : 'from-gray-800 to-gray-900'} border border-brand-500/30 rounded-2xl p-6`}>
+              <h3 className="font-bold text-white mb-2">
+                {user.is_pro ? 'Pro Plan Active' : 'Starter Plan'}
+              </h3>
+              <p className="text-sm text-gray-300 mb-4">
+                {user.is_pro 
+                  ? 'Ваш план активен до Oct 24, 2025.' 
+                  : 'Перейдите на Pro, чтобы отключить рекламу и получить доступ к AI.'}
+              </p>
+              {user.is_pro && (
+                <div className="w-full bg-black/30 h-2 rounded-full mb-4">
+                   <div className="bg-brand-500 h-2 rounded-full" style={{ width: '75%' }}></div>
+                </div>
+              )}
+              <Link 
+                to="/pricing"
+                className={`block w-full text-center text-sm font-bold py-2 rounded-lg transition-colors ${user.is_pro ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-brand-600 hover:bg-brand-500 text-white'}`}
+              >
+                 {user.is_pro ? 'Управление подпиской' : 'Улучшить тариф'}
+              </Link>
            </div>
 
            <button 

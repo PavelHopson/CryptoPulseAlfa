@@ -1,8 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
-import { Activity, BarChart2, Search, Bell, User, Star, TrendingUp, DollarSign, Shield, LogIn, Check, X, Info, CheckCircle, AlertTriangle, Trophy } from 'lucide-react';
+import { Activity, BarChart2, Search, Bell, User, Star, TrendingUp, DollarSign, Shield, LogIn, Check, X, Info, CheckCircle, AlertTriangle, Trophy, CreditCard } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { getUserProfile } from '../services/userService';
 import { UserProfile } from '../types';
+import { MockAd } from './MockAd';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -76,6 +78,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </div>
 
             <div className="flex items-center gap-4">
+              <Link to="/pricing" className="text-sm text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium">
+                  <CreditCard className="w-4 h-4" /> Тарифы
+              </Link>
               <div className="relative hidden lg:block">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input 
@@ -237,9 +242,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
          )}
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full relative">
         {children}
       </main>
+
+      {/* Ad Overlay for Non-Pro Users */}
+      {user && !user.is_pro && <MockAd />}
       
       <footer className="hidden md:block border-t border-gray-800 py-6 mt-12">
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center text-xs text-gray-600">

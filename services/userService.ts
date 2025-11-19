@@ -1,3 +1,4 @@
+
 import { UserProfile, Position, CoinData, Transaction, AssetAllocation, PerformancePoint, UserActivity } from '../types';
 
 const STORAGE_KEY_USERS = 'cryptopulse_users_v2';
@@ -15,7 +16,7 @@ const INITIAL_STATE: UserProfile = {
   equity: 100000,
   positions: [],
   transactions: [],
-  is_pro: true,
+  is_pro: false, // Changed default to false to show ads for new users
   member_since: new Date().toISOString(),
   preferences: {
     currency: 'USD',
@@ -170,7 +171,8 @@ export const registerUser = (name: string, email: string, password: string): { s
     positions: [],
     achievements: [],
     level: 1,
-    xp: 0
+    xp: 0,
+    is_pro: false // Explicitly false for new registrations
   };
 
   users.push(newUser);
@@ -229,6 +231,7 @@ export const updateUserProfile = (updates: Partial<UserProfile>): UserProfile =>
   if (updates.avatar) logUserActivity(current.id, 'PROFILE_UPDATE', 'Avatar changed');
   else if (updates.name || updates.email) logUserActivity(current.id, 'PROFILE_UPDATE', 'Profile details updated');
   else if (updates.preferences) logUserActivity(current.id, 'PROFILE_UPDATE', 'Preferences updated');
+  else if (updates.is_pro !== undefined) logUserActivity(current.id, 'PROFILE_UPDATE', `Subscription status changed to ${updates.is_pro ? 'PRO' : 'FREE'}`);
 
   return updatedUser;
 };
