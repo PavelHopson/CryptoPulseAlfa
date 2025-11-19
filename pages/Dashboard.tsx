@@ -1,8 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchMarketData } from '../services/cryptoService';
-import { CoinData, AssetCategory } from '../types';
-import { ArrowUpRight, ArrowDownRight, Star, TrendingUp, Activity, Globe, Zap } from 'lucide-react';
+import { fetchMarketNews, getProjectNews } from '../services/newsService';
+import { CoinData, AssetCategory, NewsArticle } from '../types';
+import { ArrowUpRight, ArrowDownRight, Star, TrendingUp, Activity, Globe, Zap, FileText, ExternalLink, Bell } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 const MiniChart = ({ data, isPositive }: { data: number[], isPositive: boolean }) => (
@@ -38,13 +40,25 @@ export const MarketPage: React.FC<MarketPageProps> = ({ category, title, subtitl
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  
+  // News State
+  const [marketNews, setMarketNews] = useState<NewsArticle[]>([]);
+  const [projectNews, setProjectNews] = useState<NewsArticle[]>([]);
 
   useEffect(() => {
     setLoading(true);
     const load = async () => {
+      // 1. Market Data
       const { data, error: apiError } = await fetchMarketData(category);
       setCoins(data);
       if (apiError) setError(apiError);
+      
+      // 2. News Data
+      const mNews = await fetchMarketNews();
+      const pNews = getProjectNews();
+      setMarketNews(mNews.slice(0, 5));
+      setProjectNews(pNews);
+
       setLoading(false);
     };
     load();
@@ -64,22 +78,74 @@ export const MarketPage: React.FC<MarketPageProps> = ({ category, title, subtitl
   return (
     <div className="space-y-8 animate-fade-in">
       
-      {/* Category Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      {/* Top Section: News Hub */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Platform Updates (Project News) */}
+        <div className="bg-gradient-to-br from-brand-900/50 to-purple-900/50 border border-brand-500/30 rounded-2xl p-6 relative overflow-hidden">
+          <div className="flex items-center gap-2 mb-4">
+            <Bell className="w-5 h-5 text-brand-400" />
+            <h2 className="font-bold text-white text-lg">Новости CryptoPulse</h2>
+          </div>
+          <div className="space-y-4 relative z-10">
+             {projectNews.map(news => (
+               <div key={news.id} className="flex gap-3 group">
+                 <div className="w-12 h-12 rounded-lg bg-gray-900/50 overflow-hidden flex-shrink-0 border border-white/10">
+                    <img src={news.imageUrl} alt="" className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
+                 </div>
+                 <div>
+                    <h3 className="text-sm font-bold text-white leading-tight group-hover:text-brand-400 transition-colors cursor-pointer">{news.title}</h3>
+                    <p className="text-xs text-gray-400 mt-1 line-clamp-2">{news.description}</p>
+                    <span className="text-[10px] text-brand-300 mt-1 block">{news.publishedAt}</span>
+                 </div>
+               </div>
+             ))}
+          </div>
+          {/* Decorative Blur */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-600 rounded-full blur-[60px] opacity-20 -mr-10 -mt-10"></div>
+        </div>
+
+        {/* Live Market Feed (Investing.com) */}
+        <div className="lg:col-span-2 bg-dark-card border border-gray-800 rounded-2xl p-6">
+           <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                 <Globe className="w-5 h-5 text-orange-500" />
+                 <h2 className="font-bold text-white text-lg">Лента Рынка (Investing.com)</h2>
+              </div>
+              <span className="text-xs flex items-center gap-1 text-green-400 animate-pulse">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div> Live
+              </span>
+           </div>
+           
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {marketNews.map(news => (
+                 <a href={news.url} target="_blank" rel="noopener noreferrer" key={news.id} className="block bg-gray-900/30 hover:bg-gray-800 border border-gray-800 rounded-xl p-3 transition-all group">
+                    <div className="flex justify-between items-start gap-2">
+                       <h3 className="text-sm font-medium text-gray-200 group-hover:text-brand-400 transition-colors line-clamp-2 mb-2">{news.title}</h3>
+                       <ExternalLink className="w-3 h-3 text-gray-600 group-hover:text-white flex-shrink-0" />
+                    </div>
+                    <div className="flex justify-between items-end mt-2">
+                       <span className="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded">{news.source}</span>
+                       <span className="text-[10px] text-gray-500">{news.publishedAt}</span>
+                    </div>
+                 </a>
+              ))}
+           </div>
+        </div>
+
+      </div>
+
+      {/* Market Header Info */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-gray-800 pb-4">
         <div>
            <h1 className="text-3xl font-bold text-white mb-2">{title}</h1>
            <p className="text-gray-400">{subtitle}</p>
         </div>
         
-        {/* Quick Market Status */}
         <div className="flex gap-4 text-sm">
            <div className="flex items-center gap-2 bg-dark-card border border-gray-800 px-3 py-1.5 rounded-lg">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-gray-300">Рынок Открыт</span>
-           </div>
-           <div className="flex items-center gap-2 bg-dark-card border border-gray-800 px-3 py-1.5 rounded-lg">
-              <Globe className="w-4 h-4 text-brand-500" />
-              <span className="text-gray-300">Глобальные данные</span>
+              <Activity className="w-4 h-4 text-brand-500" />
+              <span className="text-gray-300">Волатильность: <span className="text-white font-bold">Умеренная</span></span>
            </div>
         </div>
       </div>
@@ -91,7 +157,7 @@ export const MarketPage: React.FC<MarketPageProps> = ({ category, title, subtitl
         </div>
       )}
 
-      {/* Market Stats Cards */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-dark-card border border-gray-800 rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-brand-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>

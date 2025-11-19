@@ -112,6 +112,17 @@ export enum TimeRange {
   D30 = '30d'
 }
 
+export interface NewsArticle {
+  id: string;
+  title: string;
+  description: string; // Snippet
+  url: string;
+  source: string;
+  publishedAt: string;
+  imageUrl?: string;
+  type: 'MARKET' | 'PROJECT'; // Market news or Site update
+}
+
 // --- ADMIN TYPES ---
 
 export interface SystemConfig {

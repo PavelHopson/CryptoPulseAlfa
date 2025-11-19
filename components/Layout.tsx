@@ -1,5 +1,6 @@
+
 import React, { useEffect, useState } from 'react';
-import { Activity, BarChart2, Search, Bell, User, Star, TrendingUp, DollarSign, Shield, LogIn } from 'lucide-react';
+import { Activity, BarChart2, Search, Bell, User, Star, TrendingUp, DollarSign, Shield, LogIn, Check, X, Info, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { getUserProfile } from '../services/userService';
 import { UserProfile } from '../types';
@@ -7,6 +8,15 @@ import { UserProfile } from '../types';
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const [user, setUser] = useState<UserProfile | null>(null);
+  
+  // Notification State
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, title: 'Bitcoin пробил $65,000', time: '2 мин назад', read: false, type: 'alert' },
+    { id: 2, title: 'Успешный депозит $10,000', time: '1 час назад', read: false, type: 'success' },
+    { id: 3, title: 'Новая функция: AI Analyst', time: '3 часа назад', read: true, type: 'info' },
+    { id: 4, title: 'Добро пожаловать в CryptoPulse', time: '1 день назад', read: true, type: 'info' },
+  ]);
 
   const updateProfile = () => {
     const profile = getUserProfile();
@@ -21,7 +31,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     updateProfile();
+    setIsNotifOpen(false); // Close notifs on route change
   }, [location]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const deleteNotification = (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
 
   const isActive = (path: string) => location.pathname === path ? 'text-brand-500 bg-brand-500/10' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50';
 
@@ -58,15 +80,72 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   className="bg-dark-card border border-gray-700 text-sm rounded-full pl-9 pr-4 py-1.5 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 w-64 transition-all"
                 />
               </div>
-              <button className="p-2 text-gray-400 hover:text-white transition-colors relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              
+              {/* Notification Dropdown */}
+              <div className="relative">
+                <button 
+                  onClick={() => setIsNotifOpen(!isNotifOpen)}
+                  className={`p-2 rounded-full transition-colors relative ${isNotifOpen ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                  )}
+                </button>
+
+                {isNotifOpen && (
+                   <>
+                     <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)}></div>
+                     <div className="absolute top-full right-0 mt-2 w-80 bg-dark-card border border-gray-800 rounded-xl shadow-2xl shadow-black/50 z-50 overflow-hidden animate-fade-in origin-top-right ring-1 ring-black ring-opacity-5">
+                        <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
+                            <h3 className="font-bold text-white text-sm">Уведомления</h3>
+                            {unreadCount > 0 && (
+                                <button onClick={markAllRead} className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
+                                    <Check className="w-3 h-3" /> Все
+                                </button>
+                            )}
+                        </div>
+                        <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                            {notifications.length === 0 ? (
+                                <div className="p-8 text-center text-gray-500 text-sm">Нет новых уведомлений</div>
+                            ) : (
+                                notifications.map(n => (
+                                    <div key={n.id} className={`p-4 border-b border-gray-800 hover:bg-gray-800/50 transition-colors relative group ${!n.read ? 'bg-brand-500/5' : ''}`}>
+                                        <button 
+                                            onClick={(e) => deleteNotification(e, n.id)}
+                                            className="absolute right-2 top-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                        <div className="flex gap-3">
+                                            <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!n.read ? 'bg-brand-500' : 'bg-transparent'}`}></div>
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    {n.type === 'alert' && <AlertTriangle className="w-3 h-3 text-yellow-500" />}
+                                                    {n.type === 'success' && <CheckCircle className="w-3 h-3 text-green-500" />}
+                                                    {n.type === 'info' && <Info className="w-3 h-3 text-blue-500" />}
+                                                    <span className={`font-medium text-sm ${!n.read ? 'text-white' : 'text-gray-400'}`}>{n.title}</span>
+                                                </div>
+                                                <div className="text-xs text-gray-500">{n.time}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div className="p-2 bg-gray-900/50 border-t border-gray-800 text-center">
+                            <button className="text-xs text-gray-500 hover:text-gray-300">История уведомлений</button>
+                        </div>
+                     </div>
+                   </>
+                )}
+              </div>
+
               <div className="h-6 w-px bg-gray-800 mx-1"></div>
               
               {user && user.id !== 'demo-user' ? (
                 <Link to="/profile" className={`flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full transition-all ${isActive('/profile')}`}>
-                  <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                  <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-sm font-bold text-white ring-2 ring-dark-bg">
                     {user.name.charAt(0)}
                   </div>
                   <div className="text-xs text-left hidden xl:block">
@@ -90,14 +169,46 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <Activity className="w-6 h-6 text-brand-500" />
             <span className="font-bold text-lg">CryptoPulse</span>
          </div>
-         {user && user.id !== 'demo-user' ? (
-            <Link to="/profile" className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
-              {user.name.charAt(0)}
-            </Link>
-         ) : (
-            <Link to="/login" className="text-brand-500">
-              <LogIn className="w-6 h-6" />
-            </Link>
+         <div className="flex items-center gap-4">
+            <button 
+                onClick={() => setIsNotifOpen(!isNotifOpen)} 
+                className="relative text-gray-400"
+            >
+                <Bell className="w-6 h-6" />
+                {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-dark-bg"></span>
+                )}
+            </button>
+            {user && user.id !== 'demo-user' ? (
+                <Link to="/profile" className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                {user.name.charAt(0)}
+                </Link>
+            ) : (
+                <Link to="/login" className="text-brand-500">
+                <LogIn className="w-6 h-6" />
+                </Link>
+            )}
+         </div>
+
+         {/* Mobile Notification Sheet (Simplified) */}
+         {isNotifOpen && (
+             <div className="fixed inset-0 z-50 bg-dark-bg flex flex-col animate-fade-in">
+                 <div className="flex justify-between items-center p-4 border-b border-gray-800">
+                     <h2 className="text-lg font-bold">Уведомления</h2>
+                     <button onClick={() => setIsNotifOpen(false)}><X className="w-6 h-6" /></button>
+                 </div>
+                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                     {notifications.map(n => (
+                         <div key={n.id} className="bg-dark-card p-4 rounded-lg border border-gray-800 flex gap-4">
+                            <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!n.read ? 'bg-brand-500' : 'bg-gray-600'}`}></div>
+                            <div>
+                                <div className="font-bold text-sm mb-1">{n.title}</div>
+                                <div className="text-xs text-gray-500">{n.time}</div>
+                            </div>
+                         </div>
+                     ))}
+                 </div>
+             </div>
          )}
       </div>
 
